@@ -5,6 +5,12 @@
 document.addEventListener('DOMContentLoaded', async () => {
   await Alwazir.boot();
 
+  /* Theme editor shared modules (see public/js/* — same code the
+     server uses to render each page). */
+  const T = window.AlwazirTheme;
+  const F = window.AlwazirFonts;
+  const HAS_THEME_EDITOR = !!(T && F);
+
   const AUTH_KEY = 'alwazir-admin-key';
   const loginScreen = document.querySelector('[data-login-screen]');
   const dashboard = document.querySelector('[data-dashboard]');
@@ -136,12 +142,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderAll() {
     renderProducts();
     renderBrandForm();
-    renderThemePicker();
     renderMobileToggle();
-    renderFontPicker();
-    renderBrandFontPicker();
     renderBoldToggle();
     renderLogoPreview();
+    syncThemeEditor();
   }
 
   function renderProducts() {
@@ -196,30 +200,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  function renderThemePicker() {
-    document.querySelectorAll('[data-theme-grid] .theme-card').forEach((card) => {
-      card.classList.toggle('selected', card.dataset.theme === settings.theme);
-    });
-  }
-
   function renderMobileToggle() {
     const mode = settings.mobileColumns === 'single' ? 'single' : 'double';
     document.querySelectorAll('[data-mobile-toggle] .mode-card').forEach((card) => {
       card.classList.toggle('selected', card.dataset.mode === mode);
-    });
-  }
-
-  function renderFontPicker() {
-    const font = settings.fontFamily || 'default';
-    document.querySelectorAll('[data-font-grid] .font-card').forEach((card) => {
-      card.classList.toggle('selected', card.dataset.font === font);
-    });
-  }
-
-  function renderBrandFontPicker() {
-    const font = settings.brandFont || 'default';
-    document.querySelectorAll('[data-brand-font-grid] .font-card').forEach((card) => {
-      card.classList.toggle('selected', card.dataset.brandFont === font);
     });
   }
 
@@ -240,6 +224,371 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const urlInput = document.querySelector('[data-logo-url]');
     if (urlInput) urlInput.value = settings.logo || '';
+  }
+
+  /* ============================================================
+     THEME EDITOR — presets, colors, fonts, live preview, reset.
+     State lives in `editor`; Save Changes ships it to /api/settings.
+     Every change is applied live to <html> (the same CSS variables
+     the storefront consumes), so the whole admin page + the preview
+     panel re-skin instantly.
+     ============================================================ */
+
+  const editor = {
+    theme: 'gold',
+    colors: T ? T.defaultTokens() : {},
+    bodyFont: 'default',
+    brandFont: 'default',
+    headingFont: 'playfair',
+    dirty: false
+  };
+
+  const presetRow = document.querySelector('[data-preset-row]');
+  const colorGrid = document.querySelector('[data-color-grid]');
+  const contrastWarn = document.querySelector('[data-contrast-warn]');
+  const unsavedEl = document.querySelector('[data-unsaved]');
+  const fontSlotEls = document.querySelectorAll('[data-font-slot]');
+
+  const FONT_SLOTS = [
+    { slot: 'body', key: 'bodyFont', label: 'Body font', hint: 'All store text.', defaultId: 'default' },
+    { slot: 'brand', key: 'brandFont', label: 'Brand name font', hint: 'Brand name and hero title.', defaultId: 'playfair' },
+    { slot: 'heading', key: 'headingFont', label: 'Heading font', hint: 'Section titles, product names, prices.', defaultId: 'playfair' }
+  ];
+
+  function defaultNameFor(defaultId) {
+    const d = F.resolve(defaultId);
+    return 'Default (' + d.name.replace(' (Inter)', '') + ')';
+  }
+
+  function syncThemeEditor() {
+    if (!HAS_THEME_EDITOR) return;
+    editor.theme = settings.theme || 'gold';
+    editor.colors = T.effectiveTokens(settings);
+    editor.bodyFont = settings.fontFamily || 'default';
+    editor.brandFont = settings.brandFont || 'default';
+    editor.headingFont = settings.headingFont || 'playfair';
+    editor.dirty = false;
+    renderPresets();
+    renderColors();
+    renderFontSelectors();
+    applyThemeLive();
+    updateUnsaved();
+  }
+
+  /* ---------- presets ---------- */
+  function renderPresets() {
+    if (!presetRow) return;
+    presetRow.innerHTML = T.PRESETS.map((p) => {
+      const t = p.tokens;
+      return (
+        '<button type="button" class="preset-chip' + (p.named && p.id === editor.theme ? ' selected' : '') +
+        '" data-preset="' + p.id + '" title="' + Alwazir.escapeHtml(p.name) + '">' +
+        '<span class="preset-swatches"><i style="background:' + t.background + '"></i>' +
+        '<i style="background:' + t.surface + '"></i><i style="background:' + t.primary + '"></i></span>' +
+        Alwazir.escapeHtml(p.name) + '</button>'
+      );
+    }).join('');
+  }
+
+  if (presetRow) {
+    presetRow.addEventListener('click', (e) => {
+      const chip = e.target.closest('[data-preset]');
+      if (!chip) return;
+      const p = T.presetById(chip.dataset.preset);
+      editor.theme = p.named ? p.id : editor.theme;
+      editor.colors = { ...p.tokens };
+      markDirty();
+      renderPresets();
+      renderColors();
+      applyThemeLive();
+    });
+  }
+
+  /* ---------- color pickers ---------- */
+  function renderColors() {
+    if (!colorGrid) return;
+    colorGrid.innerHTML = T.TOKENS.map((t) =>
+      '<div class="cp" data-token="' + t.key + '">' +
+      '<div class="cp-top">' +
+      '<label class="cp-label" for="cp-hex-' + t.key + '">' + t.label + '</label>' +
+      '<span class="cp-hint">' + t.hint + '</span>' +
+      '</div>' +
+      '<div class="cp-control">' +
+      '<input type="color" class="cp-swatch" data-swatch value="' + editor.colors[t.key] + '" aria-label="' + t.label + ' color picker">' +
+      '<input type="text" class="cp-hex" id="cp-hex-' + t.key + '" value="' + editor.colors[t.key].toUpperCase() +
+      '" spellcheck="false" autocomplete="off" aria-invalid="false" aria-describedby="cp-err-' + t.key + '">' +
+      '</div>' +
+      '<span class="cp-err" id="cp-err-' + t.key + '" hidden>Use a hex color like #8B5CF6 or #F00</span>' +
+      '</div>'
+    ).join('');
+    wireColorControls();
+  }
+
+  function wireColorControls() {
+    if (!colorGrid) return;
+    colorGrid.querySelectorAll('[data-token]').forEach((row) => {
+      const key = row.dataset.token;
+      const swatch = row.querySelector('[data-swatch]');
+      const hexInput = row.querySelector('.cp-hex');
+      const err = row.querySelector('.cp-err');
+
+      const setValid = (valid) => {
+        hexInput.classList.toggle('invalid', !valid);
+        hexInput.setAttribute('aria-invalid', valid ? 'false' : 'true');
+        err.hidden = valid;
+      };
+
+      // Native picker (clicking the swatch opens it) — fires while
+      // dragging, so the preview follows the selection live.
+      swatch.addEventListener('input', () => {
+        editor.colors[key] = swatch.value;
+        hexInput.value = swatch.value.toUpperCase();
+        setValid(true);
+        markDirty();
+        applyThemeLive();
+      });
+
+      // HEX field — validate on every keystroke; apply immediately
+      // when the value is valid (#RGB or #RRGGBB, # optional).
+      hexInput.addEventListener('input', () => {
+        const norm = T.parseHex(hexInput.value);
+        if (norm) {
+          editor.colors[key] = norm;
+          swatch.value = norm;
+          setValid(true);
+          markDirty();
+          applyThemeLive();
+        } else {
+          setValid(false);
+        }
+      });
+
+      // Leaving an invalid value behind restores the last good one.
+      hexInput.addEventListener('blur', () => {
+        if (!T.parseHex(hexInput.value)) {
+          hexInput.value = editor.colors[key].toUpperCase();
+          swatch.value = editor.colors[key];
+          setValid(true);
+        }
+      });
+    });
+  }
+
+  /* ---------- font selectors (comboboxes) ---------- */
+  function renderFontSelectors() {
+    if (!HAS_THEME_EDITOR) return;
+    fontSlotEls.forEach((el) => {
+      const meta = FONT_SLOTS.find((s) => s.slot === el.dataset.fontSlot);
+      if (!meta) return;
+      const currentId = editor[meta.key];
+      const current = F.resolveWithDefault(currentId, meta.defaultId);
+      const btnName = currentId === 'default' ? defaultNameFor(meta.defaultId) : current.name;
+      const stack = F.stackFor(current);
+      el.innerHTML =
+        '<div class="fs-top">' +
+        '<label for="fs-btn-' + meta.slot + '">' + meta.label + '</label>' +
+        '<span class="cp-hint">' + meta.hint + '</span>' +
+        '</div>' +
+        '<div class="fs-combo">' +
+        '<button type="button" class="fs-btn" id="fs-btn-' + meta.slot + '" aria-haspopup="listbox" aria-expanded="false">' +
+        '<span class="fs-btn-name" style="font-family:' + stack + '">' + Alwazir.escapeHtml(btnName) + '</span>' +
+        '<span class="fs-caret" aria-hidden="true">&#9662;</span>' +
+        '</button>' +
+        '<div class="fs-listbox" role="listbox" id="fs-list-' + meta.slot + '" aria-labelledby="fs-btn-' + meta.slot + '" tabindex="-1" hidden>' +
+        F.FONTS.map((f) => {
+          const isSel = f.id === (currentId === 'default' ? 'default' : currentId);
+          const optName = f.id === 'default' ? defaultNameFor(meta.defaultId) : f.name;
+          return (
+            '<div class="fs-option' + (isSel ? ' selected' : '') + '" role="option" id="fs-opt-' + meta.slot + '-' + f.id +
+            '" data-font-id="' + f.id + '" aria-selected="' + isSel + '">' +
+            '<span class="fs-opt-sample" style="font-family:' + F.stackFor(f) + '">Ag</span>' +
+            '<span class="fs-opt-name">' + Alwazir.escapeHtml(optName) + '</span>' +
+            (isSel ? '<span class="fs-check" aria-hidden="true">&#10003;</span>' : '') +
+            '</div>'
+          );
+        }).join('') +
+        '</div>' +
+        '</div>' +
+        '<p class="fs-preview" style="font-family:' + stack + '">The quick brown fox jumps over the lazy dog — 0123</p>';
+      wireCombo(el, meta);
+    });
+  }
+
+  function wireCombo(rootEl, meta) {
+    const btn = rootEl.querySelector('.fs-btn');
+    const list = rootEl.querySelector('.fs-listbox');
+    if (!btn || !list) return;
+    let active = null;
+    const options = () => Array.from(list.querySelectorAll('.fs-option'));
+
+    function close(refocus) {
+      if (list.hidden) return;
+      list.hidden = true;
+      btn.setAttribute('aria-expanded', 'false');
+      list.removeAttribute('aria-activedescendant');
+      if (refocus !== false) btn.focus();
+    }
+
+    function setActive(opt) {
+      if (!opt) return;
+      active = opt;
+      list.setAttribute('aria-activedescendant', opt.id);
+      options().forEach((o) => o.classList.toggle('active', o === opt));
+      opt.scrollIntoView({ block: 'nearest' });
+    }
+
+    function open() {
+      list.hidden = false;
+      btn.setAttribute('aria-expanded', 'true');
+      const opts = options();
+      setActive(list.querySelector('.fs-option.selected') || opts[0]);
+      list.focus();
+    }
+
+    btn.addEventListener('click', () => (list.hidden ? open() : close()));
+    btn.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        open();
+      }
+    });
+
+    list.addEventListener('keydown', (e) => {
+      const opts = options();
+      const i = opts.indexOf(active);
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setActive(opts[Math.min(i + 1, opts.length - 1)]);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setActive(i > 0 ? opts[i - 1] : opts[0]);
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        setActive(opts[0]);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        setActive(opts[opts.length - 1]);
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (active) chooseFont(meta, active.dataset.fontId);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        close();
+      } else if (e.key === 'Tab') {
+        close(false);
+      }
+    });
+
+    list.addEventListener('click', (e) => {
+      const opt = e.target.closest('.fs-option');
+      if (!opt) return;
+      chooseFont(meta, opt.dataset.fontId);
+    });
+  }
+
+  function chooseFont(meta, id) {
+    editor[meta.key] = id;
+    markDirty();
+    renderFontSelectors(); // button label, preview line and check marks
+    applyThemeLive();
+    const newBtn = document.getElementById('fs-btn-' + meta.slot);
+    if (newBtn) newBtn.focus();
+  }
+
+  /* One shared handler closes any open listbox when clicking outside
+     its combobox (the slots re-render on selection, so per-instance
+     document listeners would leak). */
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll('.fs-listbox:not([hidden])').forEach((list) => {
+      const combo = list.closest('.fs-combo');
+      if (combo && !combo.contains(e.target)) {
+        const btn = combo.querySelector('.fs-btn');
+        list.hidden = true;
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+        list.removeAttribute('aria-activedescendant');
+      }
+    });
+  });
+
+  /* ---------- live preview (whole admin page + preview panel) ---------- */
+  function applyThemeLive() {
+    if (!HAS_THEME_EDITOR) return;
+    const d = document.documentElement;
+    d.setAttribute('data-theme', editor.theme); // base named theme
+    d.setAttribute('data-custom-theme', '1');
+    T.applyVars(d, T.colorVars(editor.colors)); // 17 resolved color vars
+    d.style.setProperty('--font-body', F.stack(editor.bodyFont, 'default'));
+    d.style.setProperty('--font-brand', F.stack(editor.brandFont, 'playfair'));
+    d.style.setProperty('--font-display', F.stack(editor.headingFont, 'playfair'));
+    updateContrast();
+  }
+
+  /* Non-blocking contrast warnings — informs, never overrides. */
+  function updateContrast() {
+    if (!contrastWarn) return;
+    const issues = T.contrastWarnings(editor.colors);
+    if (!issues.length) {
+      contrastWarn.hidden = true;
+      contrastWarn.innerHTML = '';
+      return;
+    }
+    contrastWarn.hidden = false;
+    contrastWarn.innerHTML = issues
+      .map(
+        (w) =>
+          '<span>&#9888; ' + Alwazir.escapeHtml(w.label) + ' — contrast ' + w.ratio + ':1 is low (recommended at least ' +
+          w.min + ':1). You can keep it if it looks right for your store.</span>'
+      )
+      .join('');
+  }
+
+  /* ---------- unsaved indicator ---------- */
+  function markDirty() {
+    editor.dirty = true;
+    updateUnsaved();
+  }
+
+  function updateUnsaved() {
+    if (unsavedEl) unsavedEl.hidden = !editor.dirty;
+  }
+
+  /* What to send: a full token snapshot, unless it matches the
+     selected named theme exactly (then keep the pure base theme). */
+  function themeColorsPayload() {
+    if (!HAS_THEME_EDITOR) return null;
+    const p = T.presetById(editor.theme);
+    const identical = p.named && T.TOKENS.every((t) => (editor.colors[t.key] || '').toLowerCase() === (p.tokens[t.key] || '').toLowerCase());
+    return identical ? null : { ...editor.colors };
+  }
+
+  /* ---------- reset to default ---------- */
+  const resetBtn = document.querySelector('[data-reset-theme]');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', async () => {
+      if (!confirm('Reset the theme to default?\n\nThis restores the original Gold & White colors and the original fonts.')) return;
+      try {
+        const res = await fetch('/api/settings', {
+          method: 'PUT',
+          headers: authHeaders(),
+          body: JSON.stringify({
+            theme: 'gold',
+            themeColors: null,
+            fontFamily: 'default',
+            brandFont: 'default',
+            headingFont: 'playfair'
+          })
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          Alwazir.toast(data.error || 'Could not reset theme');
+          return;
+        }
+        Alwazir.toast('Theme reset to default');
+        await refresh(); // re-reads settings → editor + preview re-sync
+      } catch (err) {
+        Alwazir.toast('Could not reset theme');
+      }
+    });
   }
 
   /* ---------- product CRUD ---------- */
@@ -415,7 +764,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  /* ---------- brand form ---------- */
+  /* ---------- brand form (identity + theme) ---------- */
   document.querySelector('[data-brand-form]').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
@@ -426,10 +775,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       whatsapp: field(form, 'whatsapp').value,
       shareTitle: field(form, 'shareTitle').value,
       shareDescription: field(form, 'shareDescription').value,
-      theme: document.querySelector('.theme-card.selected')?.dataset.theme || 'gold',
+      theme: HAS_THEME_EDITOR ? editor.theme : 'gold',
+      themeColors: themeColorsPayload(),
       mobileColumns: document.querySelector('[data-mobile-toggle] .mode-card.selected')?.dataset.mode || 'double',
-      fontFamily: document.querySelector('[data-font-grid] .font-card.selected')?.dataset.font || 'default',
-      brandFont: document.querySelector('[data-brand-font-grid] .font-card.selected')?.dataset.brandFont || 'default',
+      fontFamily: HAS_THEME_EDITOR ? editor.bodyFont : 'default',
+      brandFont: HAS_THEME_EDITOR ? editor.brandFont : 'default',
+      headingFont: HAS_THEME_EDITOR ? editor.headingFont : 'playfair',
       textBold: document.querySelector('[data-bold-toggle] .mode-card.selected')?.dataset.bold === 'true'
     };
     if (pendingLogoUrl) payload.logo = pendingLogoUrl;
@@ -450,20 +801,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       pendingShareImageUrl = null;
       Alwazir.toast('Settings saved');
       renderAll();
-      // refresh the storefront theme/font/bold cache and re-apply
+      // refresh the storefront theme/font cache and re-apply
       await Alwazir.refreshSettings();
     } catch (err) {
       Alwazir.toast('Could not save settings');
     }
-  });
-
-  document.querySelector('[data-theme-grid]').addEventListener('click', (e) => {
-    const card = e.target.closest('.theme-card');
-    if (!card) return;
-    document.querySelectorAll('[data-theme-grid] .theme-card').forEach((c) => c.classList.remove('selected'));
-    card.classList.add('selected');
-    // live preview the theme on the admin page
-    document.documentElement.setAttribute('data-theme', card.dataset.theme);
   });
 
   document.querySelector('[data-mobile-toggle]').addEventListener('click', (e) => {
@@ -471,28 +813,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!card) return;
     document.querySelectorAll('[data-mobile-toggle] .mode-card').forEach((c) => c.classList.remove('selected'));
     card.classList.add('selected');
-  });
-
-  document.querySelector('[data-font-grid]').addEventListener('click', (e) => {
-    const card = e.target.closest('.font-card');
-    if (!card) return;
-    document.querySelectorAll('[data-font-grid] .font-card').forEach((c) => c.classList.remove('selected'));
-    card.classList.add('selected');
-    // live preview the font on the admin page
-    const font = card.dataset.font;
-    if (font && font !== 'default') document.documentElement.setAttribute('data-font', font);
-    else document.documentElement.removeAttribute('data-font');
-  });
-
-  document.querySelector('[data-brand-font-grid]').addEventListener('click', (e) => {
-    const card = e.target.closest('.font-card');
-    if (!card) return;
-    document.querySelectorAll('[data-brand-font-grid] .font-card').forEach((c) => c.classList.remove('selected'));
-    card.classList.add('selected');
-    // live preview the brand name font on the admin page
-    const font = card.dataset.brandFont;
-    if (font && font !== 'default') document.documentElement.setAttribute('data-brand-font', font);
-    else document.documentElement.removeAttribute('data-brand-font');
   });
 
   document.querySelector('[data-bold-toggle]').addEventListener('click', (e) => {
@@ -558,7 +878,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const v = shareImageUrlInput.value.trim();
     if (!v) return;
     if (!validImageUrl(v)) {
-      Alwazir.toast('Please enter a valid image URL (https://…)');
+      Alwazir.toast('Please enter a valid preview image URL (https://…)');
       return;
     }
     pendingShareImageUrl = v;

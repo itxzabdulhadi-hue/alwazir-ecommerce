@@ -56,18 +56,64 @@ const Alwazir = (() => {
     applySettings();
   }
 
+  /* Make sure the typefaces for the given font entries are loaded:
+     the page's server-injected <link> covers the fonts active at
+     load time; anything newer (e.g. an admin save in another tab)
+     gets one extra on-demand request. */
+  function ensureFontLink(fontEntries) {
+    if (!window.AlwazirFonts || !fontEntries || !fontEntries.length) return;
+    const present = new Set();
+    document.querySelectorAll('link[href*="fonts.googleapis.com/css2"]').forEach((l) => {
+      try {
+        const u = new URL(l.getAttribute('href'), window.location.origin);
+        for (const part of u.searchParams.getAll('family')) {
+          present.add(decodeURIComponent(part.split(':')[0].replace(/\+/g, ' ')));
+        }
+      } catch (e) {
+        /* ignore malformed links */
+      }
+    });
+    const missing = fontEntries.filter((f) => f && !present.has(f.family));
+    if (missing.length) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = window.AlwazirFonts.googleFontsUrl(missing);
+      document.head.appendChild(link);
+    }
+  }
+
   function applySettings() {
     const root = document.documentElement;
     root.setAttribute('data-theme', settings.theme || 'gold');
     root.setAttribute('data-mobile-columns', settings.mobileColumns === 'single' ? 'single' : 'double');
-
-    const font = settings.fontFamily && settings.fontFamily !== 'default' ? settings.fontFamily : null;
-    if (font) root.setAttribute('data-font', font);
-    else root.removeAttribute('data-font');
-    const brandFont = settings.brandFont && settings.brandFont !== 'default' ? settings.brandFont : null;
-    if (brandFont) root.setAttribute('data-brand-font', brandFont);
-    else root.removeAttribute('data-brand-font');
     root.setAttribute('data-bold', settings.textBold ? 'true' : 'false');
+
+    /* Typography — resolve the selected font ids to CSS stacks via the
+       shared catalog (public/js/fonts.js), same code path as the
+       server's <head> injection. */
+    if (window.AlwazirFonts) {
+      const F = window.AlwazirFonts;
+      const bodyFont = F.resolveWithDefault(settings.fontFamily, 'default');
+      const brandFont = F.resolveWithDefault(settings.brandFont, 'playfair');
+      const headingFont = F.resolveWithDefault(settings.headingFont, 'playfair');
+      root.style.setProperty('--font-body', F.stackFor(bodyFont));
+      root.style.setProperty('--font-brand', F.stackFor(brandFont));
+      root.style.setProperty('--font-display', F.stackFor(headingFont));
+      ensureFontLink([bodyFont, brandFont, headingFont]);
+    }
+
+    /* Custom colors — mirror the server-injected theme variables onto
+       the live document (also lets an already-open tab pick up theme
+       changes without a reload). */
+    if (window.AlwazirTheme) {
+      const T = window.AlwazirTheme;
+      if (settings.themeColors && typeof settings.themeColors === 'object' && Object.keys(settings.themeColors).length) {
+        root.setAttribute('data-custom-theme', '1');
+        T.applyVars(root, T.colorVars(T.effectiveTokens(settings)));
+      } else {
+        root.removeAttribute('data-custom-theme');
+      }
+    }
 
     document.querySelectorAll('[data-brand]').forEach((el) => {
       el.textContent = settings.brandName || 'alwazir';
