@@ -122,11 +122,18 @@ So the exact same code runs locally and on Vercel with zero changes.
 - **Search** — instant search by product name and category, ranked by relevance.
 - **Mobile product view** — admin toggle for **Single Mode** (1 per row) or
   **Double Mode** (2 per row) on phones.
-- **Themes** — 10 selectable color themes (Gold & White, Rose Gold, Emerald,
-  Midnight Gold, Ivory, Royal Blue, Dark Black & Green, Dark Black & White,
-  Black & Emerald, Silver & Emerald).
-- **Text style** — 7 selectable fonts for the body text, a separate 7-font picker
-  for the **brand name**, and a **bold** toggle.
+- **Theme editor** — fully customize the store from the admin panel: 15 preset
+  themes (the 10 classic ones — Gold & White, Rose Gold, Emerald, Midnight Gold,
+  Ivory, Royal Blue, Dark Black & Green, Dark Black & White, Black & Emerald,
+  Silver & Emerald — plus Ocean, Forest, Purple, Minimal and Professional),
+  plus per-color pickers (primary, secondary, accent tint, background, surface,
+  soft surface, text, muted text, border, button and danger) with native color
+  pickers and validated hex input, live preview, contrast warnings and a
+  one-click **Reset to Default**.
+- **Text style** — 32 selectable Google Fonts for the **body text**, **brand
+  name** and **headings** (each dropdown previews every font in its own
+  typeface), and a **bold** toggle. Only the fonts you pick are loaded on the
+  storefront.
 - **Brand customization** — editable name, tagline, logo, WhatsApp number and
   currency symbol.
 - **Product images** — upload an image file **or paste an image URL** (both work),
@@ -146,9 +153,14 @@ So the exact same code runs locally and on Vercel with zero changes.
 - `lib/store.js` — storage layer (local JSON file ↔ Vercel Blob).
 - `api/index.js` — Vercel serverless entry point.
 - `vercel.json` — routes pages + `/api/*` through the function, includes `views/**` and `public/**`.
-- `views/` — the three HTML pages (served through Express so the current theme
-  and link-preview tags are injected before first paint — no theme flash).
+- `views/` — the three HTML pages (served through Express so the current theme,
+  fonts and link-preview tags are injected before first paint — no theme flash).
 - `public/` — shared CSS, JS, and seed imagery (static assets).
+  - `public/js/theme-engine.js` — theme color engine shared by server and admin
+    panel: base tokens, presets, derived values (gradients, shadows, on-button
+    color), contrast checks. One implementation, two runtimes.
+  - `public/js/fonts.js` — the 32-font Google Fonts catalog (also shared):
+    drives which fonts each page loads and how font ids map to CSS stacks.
 - `data/db.json` — local database (local mode only; auto-created).
 
 ## Notes

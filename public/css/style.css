@@ -174,21 +174,17 @@ html[data-theme='silveremerald'] {
   --danger: #c53a48;
 }
 
-/* ---------- text style: selectable fonts ---------- */
-html[data-font='poppins'] { --font-body: 'Poppins', 'Inter', sans-serif; }
-html[data-font='lora'] { --font-body: 'Lora', Georgia, serif; }
-html[data-font='montserrat'] { --font-body: 'Montserrat', 'Inter', sans-serif; }
-html[data-font='opensans'] { --font-body: 'Open Sans', 'Inter', sans-serif; }
-html[data-font='nunito'] { --font-body: 'Nunito', 'Inter', sans-serif; }
-html[data-font='raleway'] { --font-body: 'Raleway', 'Inter', sans-serif; }
+/* ---------- text style: selectable fonts ----------
+   Font families are NOT rules per data-font attribute anymore: the
+   server resolves the selected font ids (catalog in public/js/fonts.js)
+   into --font-body / --font-brand / --font-display variables and
+   injects them into <head> as html:root{...} (beats the :root
+   defaults above), so only the loaded typefaces are referenced.
 
-/* ---------- brand name font ---------- */
-html[data-brand-font='poppins'] { --font-brand: 'Poppins', 'Playfair Display', serif; }
-html[data-brand-font='lora'] { --font-brand: 'Lora', Georgia, serif; }
-html[data-brand-font='montserrat'] { --font-brand: 'Montserrat', 'Playfair Display', serif; }
-html[data-brand-font='opensans'] { --font-brand: 'Open Sans', 'Playfair Display', serif; }
-html[data-brand-font='nunito'] { --font-brand: 'Nunito', 'Playfair Display', serif; }
-html[data-brand-font='raleway'] { --font-brand: 'Raleway', 'Playfair Display', serif; }
+   Custom colors from the admin theme editor are injected the same
+   way as html[data-custom-theme='1']:root{...} — the extra attribute
+   raises specificity so custom values win over the named-theme rules
+   above regardless of stylesheet order. */
 
 /* ---------- text style: bold ---------- */
 html[data-bold='true'] { font-weight: 700; }
@@ -1277,70 +1273,319 @@ input, textarea, select {
 
 .mode-sub { font-weight: 500; font-size: 0.78rem; color: var(--muted); }
 
-/* theme picker */
-.theme-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+/* ============================================================
+   Theme editor (admin) — presets, color pickers, font selectors,
+   live preview. These controls edit the same CSS custom properties
+   the storefront consumes; values come from public/js/theme-engine.js
+   (single source of truth with the server).
+   ============================================================ */
 
-.theme-card {
-  border: 2px solid var(--border);
-  border-radius: 14px;
-  padding: 14px;
-  cursor: pointer;
-  text-align: center;
-  font-weight: 700;
-  font-size: 0.88rem;
+.theme-section-title { font-family: var(--font-display); font-size: 1.25rem; margin-bottom: 2px; }
+
+/* preset chips */
+.preset-row { display: flex; flex-wrap: wrap; gap: 10px; }
+
+.preset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  border-radius: 999px;
+  padding: 7px 14px 7px 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
   transition: all 0.15s ease;
+}
+
+.preset-chip:hover { border-color: var(--accent); }
+
+.preset-chip.selected { border-color: var(--accent); background: var(--accent-ghost); box-shadow: var(--shadow-sm); }
+
+.preset-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.preset-swatches { display: inline-flex; }
+
+.preset-swatches i {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.preset-swatches i + i { margin-left: -6px; }
+
+/* color pickers (VS Code-style: swatch opens the native picker,
+   hex field validates on the fly) */
+.color-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+
+.cp {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
   background: var(--bg);
 }
 
-.theme-card:hover { border-color: var(--accent); }
+.cp-top { display: flex; flex-direction: column; gap: 1px; margin-bottom: 8px; }
 
-.theme-card.selected { border-color: var(--accent); box-shadow: var(--shadow-sm); }
+.cp-label { font-weight: 600; font-size: 0.86rem; }
 
-.theme-swatches { display: flex; justify-content: center; gap: 6px; margin-bottom: 10px; }
+.cp-hint { font-size: 0.74rem; color: var(--muted); }
 
-.swatch { width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.12); }
+.cp-control { display: flex; align-items: center; gap: 10px; }
 
-.theme-gold .sw1 { background: #ffffff; }
-.theme-gold .sw2 { background: #c9a227; }
+.cp-swatch {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 46px;
+  height: 38px;
+  flex: 0 0 auto;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  cursor: pointer;
+}
 
-.theme-rose .sw1 { background: #f7e3ea; }
-.theme-rose .sw2 { background: #c4708f; }
+.cp-swatch::-webkit-color-swatch-wrapper { padding: 0; }
+.cp-swatch::-webkit-color-swatch { border: none; border-radius: 7px; }
+.cp-swatch::-moz-color-swatch { border: none; border-radius: 7px; }
 
-.theme-emerald .sw1 { background: #e1efe8; }
-.theme-emerald .sw2 { background: #1f7a5c; }
+.cp-swatch:hover { border-color: var(--accent); }
+.cp-swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.theme-midnight .sw1 { background: #10130f; }
-.theme-midnight .sw2 { background: #d4af37; }
+.cp-hex {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 
-.theme-ivory .sw1 { background: #f5eddc; }
-.theme-ivory .sw2 { background: #c9a227; }
+.cp-hex::placeholder { color: var(--muted); }
+.cp-hex:focus { outline: none; border-color: var(--accent); }
+.cp-hex:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-.theme-royal .sw1 { background: #e4eaf6; }
-.theme-royal .sw2 { background: #274c8f; }
+.cp-hex.invalid { border-color: var(--danger); }
+.cp-hex.invalid:focus-visible { outline-color: var(--danger); }
 
-.theme-dark .sw1 { background: #0a0e0b; }
-.theme-dark .sw2 { background: #25d366; }
+.cp-err { display: block; margin-top: 6px; font-size: 0.74rem; color: var(--danger); }
 
-.theme-bw .sw1 { background: #0a0a0a; }
-.theme-bw .sw2 { background: #ffffff; }
+/* non-blocking contrast warnings */
+.contrast-warn { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
 
-.theme-blackemerald .sw1 { background: #060a08; }
-.theme-blackemerald .sw2 { background: #10b981; }
+.contrast-warn span {
+  font-size: 0.78rem;
+  color: var(--text);
+  background: rgba(217, 119, 6, 0.12);
+  border: 1px solid rgba(217, 119, 6, 0.45);
+  padding: 8px 12px;
+  border-radius: 10px;
+}
 
-.theme-silveremerald .sw1 { background: #f2f4f5; }
-.theme-silveremerald .sw2 { background: #0f9d72; }
+/* font selector comboboxes (each option previews in its typeface) */
+.font-picker-grid { display: grid; grid-template-columns: 1fr; gap: 12px; max-width: 680px; }
 
-/* font picker cards (admin) */
-.font-card { font-size: 0.9rem; }
-.font-card .font-sample {
-  display: block;
-  font-size: 1.7rem;
-  line-height: 1.15;
-  margin-bottom: 6px;
+.fs-field {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: var(--bg);
+}
+
+.fs-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+
+.fs-top label { font-weight: 600; font-size: 0.86rem; }
+
+.fs-top .cp-hint { font-size: 0.74rem; }
+
+.fs-combo { position: relative; }
+
+.fs-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  text-align: left;
+}
+
+.fs-btn:hover { border-color: var(--accent); }
+.fs-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.fs-btn-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.fs-caret { color: var(--muted); font-size: 0.75rem; flex: 0 0 auto; }
+
+.fs-listbox {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 6px;
+}
+
+.fs-listbox:focus { outline: none; }
+.fs-listbox:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.fs-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.fs-option:hover, .fs-option.active { background: var(--accent-ghost); }
+
+.fs-option.selected .fs-opt-name { color: var(--accent-strong); }
+
+.fs-opt-sample {
+  width: 44px;
+  flex: 0 0 auto;
+  font-size: 1.25rem;
+  text-align: center;
   color: var(--text);
 }
-.font-card.selected { color: var(--accent-strong); }
-.font-card.selected .font-sample { color: var(--accent-strong); }
+
+.fs-opt-name { flex: 1; font-size: 0.88rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.fs-check { color: var(--accent-strong); font-weight: 700; flex: 0 0 auto; }
+
+.fs-preview {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--bg-soft);
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+/* live preview panel (mini storefront, driven by the same variables) */
+.tp {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg);
+  max-width: 760px;
+}
+
+.tp-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 18px;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.tp-brand { font-family: var(--font-brand); font-weight: 700; font-size: 1.05rem; }
+
+.tp-pill {
+  background: var(--accent-ghost);
+  border: 1px solid var(--border);
+  color: var(--accent-strong);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.tp-title { font-family: var(--font-display); font-size: 1.45rem; margin: 18px 18px 4px; }
+
+.tp-sub { color: var(--muted); margin: 0 18px 16px; font-size: 0.9rem; }
+
+.tp-card { display: grid; grid-template-columns: 160px 1fr; background: var(--card); border-top: 1px solid var(--border); }
+
+.tp-media { position: relative; background: var(--bg-soft); min-height: 170px; }
+
+.tp-ph {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  font-weight: 700;
+  background: var(--gold-gradient);
+  color: var(--on-accent);
+}
+
+.tp-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+  background: var(--gold-gradient);
+  color: var(--on-accent);
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  border-radius: 999px;
+}
+
+.tp-card-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
+
+.tp-cat { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent-strong); }
+
+.tp-name { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; }
+
+.tp-desc { color: var(--muted); font-size: 0.82rem; }
+
+.tp-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
+
+.tp-price { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--accent-strong); }
+
+.tp-actions { display: flex; align-items: center; gap: 12px; }
+
+.tp-btn { padding: 9px 16px; font-size: 0.8rem; }
+
+.tp-link { color: var(--accent-strong); text-decoration: underline; font-size: 0.85rem; font-weight: 600; }
+
+.tp-input {
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+}
+
+.tp-input::placeholder { color: var(--muted); }
+.tp-input:focus { outline: none; border-color: var(--accent); }
+
+/* unsaved-changes indicator in the form action row */
+.unsaved { margin-right: auto; font-size: 0.8rem; font-weight: 600; color: var(--muted); }
 
 /* ---------- responsive ---------- */
 @media (max-width: 900px) {
@@ -1370,7 +1615,8 @@ input, textarea, select {
   .admin-sidebar .admin-tab { width: auto; }
 
   .form-grid { grid-template-columns: 1fr; }
-  .theme-grid { grid-template-columns: repeat(2, 1fr); }
+  .color-grid { grid-template-columns: 1fr; }
+  .font-picker-grid { max-width: 100%; }
 }
 
 @media (max-width: 640px) {
@@ -1492,9 +1738,9 @@ input, textarea, select {
   .modal-overlay { padding: 14px 10px; }
   .modal { padding: 20px 16px; }
   .modal-head h3 { font-size: 1.3rem; }
-  .theme-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  .font-card .font-sample { font-size: 1.4rem; }
-  .font-card { font-size: 0.8rem; padding: 12px 10px; }
+  .preset-chip { padding: 6px 12px 6px 7px; font-size: 0.76rem; }
+  .tp-card { grid-template-columns: 1fr; }
+  .tp-media { min-height: 120px; }
   .mode-grid { gap: 10px; }
   .mode-card { padding: 14px 10px; font-size: 0.85rem; }
   .toast { bottom: 16px; }

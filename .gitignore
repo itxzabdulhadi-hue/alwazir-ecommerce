@@ -38,6 +38,7 @@ coverage/
 .nyc_output/
 
 # Local databases / data
+data/
 *.db
 *.sqlite
 *.sqlite3

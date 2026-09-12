@@ -5,10 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title data-page="Admin">alwazir — Admin</title>
   <link rel="icon" type="image/png" href="/img/seed/logo.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&family=Open+Sans:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Raleway:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- The Google Fonts <link> for the FULL font catalog is injected
+       into <head> by the server (lib/app.js) so every font option in
+       the dropdown below previews in its own typeface. -->
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body class="admin-body">
@@ -131,46 +130,63 @@
                 <input type="text" id="share-image-url" name="shareImageUrl" placeholder="https://example.com/preview.jpg" data-share-image-url>
                 <span class="hint">Leave blank to use the brand logo.</span>
               </div>
-              <div class="field full">
-                <label>Theme</label>
-                <div class="theme-grid" data-theme-grid>
-                  <div class="theme-card theme-gold" data-theme="gold"><div class="theme-swatches"><span class="swatch sw1"></span><span class="swatch sw2"></span></div>Gold &amp; White</div>
-                  <div class="theme-card theme-rose" data-theme="rose"><div class="theme-swatches"><span class="swatch sw1"></span><span class="swatch sw2"></span></div>Rose Gold</div>
-                  <div class="theme-card theme-emerald" data-theme="emerald"><div class="theme-swatches"><span class="swatch sw1"></span><span class="swatch sw2"></span></div>Emerald</div>
-                  <div class="theme-card theme-midnight" data-theme="midnight"><div class="theme-swatches"><span class="swatch sw1"></span><span class="swatch sw2"></span></div>Midnight Gold</div>
-                  <div class="theme-card theme-ivory" data-theme="ivory"><div class="theme-swatches"><span class="swatch sw1"></span><span class="swatch sw2"></span></div>Ivory</div>
-                  <div class="theme-card theme-royal" data-theme="royal"><div class="theme-swatches"><span class="swatch sw1"></span><span class="swatch sw2"></span></div>Royal Blue</div>
-                  <div class="theme-card theme-dark" data-theme="dark"><div class="theme-swatches"><span class="swatch sw1"></span><span class="swatch sw2"></span></div>Dark Black &amp; Green</div>
-                  <div class="theme-card theme-bw" data-theme="bw"><div class="theme-swatches"><span class="swatch sw1"></span><span class="swatch sw2"></span></div>Dark Black &amp; White</div>
-                  <div class="theme-card theme-blackemerald" data-theme="blackemerald"><div class="theme-swatches"><span class="swatch sw1"></span><span class="swatch sw2"></span></div>Black &amp; Emerald</div>
-                  <div class="theme-card theme-silveremerald" data-theme="silveremerald"><div class="theme-swatches"><span class="swatch sw1"></span><span class="swatch sw2"></span></div>Silver &amp; Emerald</div>
-                </div>
+              <!-- ==================== THEME EDITOR ==================== -->
+              <div class="field full theme-section">
+                <h3 class="theme-section-title">Theme</h3>
+                <span class="hint">Colors, fonts and presets for the whole store. Everything below previews live — click Save Changes to apply it to the site.</span>
               </div>
+
               <div class="field full">
-                <label>Text style (font)</label>
-                <div class="theme-grid font-grid" data-font-grid>
-                  <div class="theme-card font-card" data-font="default" style="font-family:'Inter',sans-serif"><span class="font-sample">Aa</span>Default</div>
-                  <div class="theme-card font-card" data-font="poppins" style="font-family:'Poppins',sans-serif"><span class="font-sample">Aa</span>Poppins</div>
-                  <div class="theme-card font-card" data-font="lora" style="font-family:'Lora',serif"><span class="font-sample">Aa</span>Lora</div>
-                  <div class="theme-card font-card" data-font="montserrat" style="font-family:'Montserrat',sans-serif"><span class="font-sample">Aa</span>Montserrat</div>
-                  <div class="theme-card font-card" data-font="opensans" style="font-family:'Open Sans',sans-serif"><span class="font-sample">Aa</span>Open Sans</div>
-                  <div class="theme-card font-card" data-font="nunito" style="font-family:'Nunito',sans-serif"><span class="font-sample">Aa</span>Nunito</div>
-                  <div class="theme-card font-card" data-font="raleway" style="font-family:'Raleway',sans-serif"><span class="font-sample">Aa</span>Raleway</div>
-                </div>
-                <span class="hint">Choose the font used for the store text — click to select, then Save Changes.</span>
+                <label>Preset themes</label>
+                <div class="preset-row" data-preset-row></div>
+                <span class="hint">A starting point — pick one, then fine-tune any color or font below. Presets fill in the editor values; they never lock anything.</span>
               </div>
+
               <div class="field full">
-                <label>Brand name font</label>
-                <div class="theme-grid" data-brand-font-grid>
-                  <div class="theme-card font-card" data-brand-font="default" style="font-family:'Playfair Display',Georgia,serif"><span class="font-sample">Aa</span>Default</div>
-                  <div class="theme-card font-card" data-brand-font="poppins" style="font-family:'Poppins',sans-serif"><span class="font-sample">Aa</span>Poppins</div>
-                  <div class="theme-card font-card" data-brand-font="lora" style="font-family:'Lora',serif"><span class="font-sample">Aa</span>Lora</div>
-                  <div class="theme-card font-card" data-brand-font="montserrat" style="font-family:'Montserrat',sans-serif"><span class="font-sample">Aa</span>Montserrat</div>
-                  <div class="theme-card font-card" data-brand-font="opensans" style="font-family:'Open Sans',sans-serif"><span class="font-sample">Aa</span>Open Sans</div>
-                  <div class="theme-card font-card" data-brand-font="nunito" style="font-family:'Nunito',sans-serif"><span class="font-sample">Aa</span>Nunito</div>
-                  <div class="theme-card font-card" data-brand-font="raleway" style="font-family:'Raleway',sans-serif"><span class="font-sample">Aa</span>Raleway</div>
+                <label>Colors</label>
+                <div class="color-grid" data-color-grid></div>
+                <div class="contrast-warn" data-contrast-warn role="status" hidden></div>
+              </div>
+
+              <div class="field full">
+                <label>Typography</label>
+                <div class="font-picker-grid">
+                  <div class="fs-field" data-font-slot="body"></div>
+                  <div class="fs-field" data-font-slot="brand"></div>
+                  <div class="fs-field" data-font-slot="heading"></div>
                 </div>
-                <span class="hint">Choose the font used for the brand name — click to select, then Save Changes.</span>
+                <span class="hint">The selected fonts are loaded on demand — the storefront only loads the typefaces you pick.</span>
+              </div>
+
+              <div class="field full">
+                <label>Live preview</label>
+                <div class="tp" data-theme-preview aria-hidden="true">
+                  <div class="tp-top">
+                    <span class="tp-brand gold-text" data-brand>alwazir</span>
+                    <span class="tp-pill">&#9733; Popular</span>
+                  </div>
+                  <h4 class="tp-title gold-text">Our Collection</h4>
+                  <p class="tp-sub">Luxury perfume oils, crafted in small batches with rare ingredients.</p>
+                  <div class="tp-card">
+                    <div class="tp-media">
+                      <span class="tp-badge">&#9733; Popular</span>
+                      <span class="tp-ph">A</span>
+                    </div>
+                    <div class="tp-card-body">
+                      <div class="tp-cat">Oud</div>
+                      <div class="tp-name">Oud Royale</div>
+                      <p class="tp-desc">A regal blend of aged agarwood, warm amber and a whisper of saffron.</p>
+                      <div class="tp-foot">
+                        <span class="tp-price">$180</span>
+                        <span class="tp-actions">
+                          <button type="button" class="btn btn-gold tp-btn" tabindex="-1">Add to Cart</button>
+                          <a class="tp-link" href="#" tabindex="-1">Visit store</a>
+                        </span>
+                      </div>
+                      <input class="tp-input" type="text" placeholder="Search for a perfume oil&hellip;" tabindex="-1">
+                    </div>
+                  </div>
+                </div>
               </div>
               <div class="field full">
                 <label>Text weight</label>
@@ -190,6 +206,8 @@
               </div>
             </div>
             <div class="modal-actions">
+              <span class="unsaved" data-unsaved hidden>&#9888; Unsaved changes</span>
+              <button type="button" class="btn btn-ghost" data-reset-theme>Reset to Default</button>
               <button type="submit" class="btn btn-gold">Save Changes</button>
             </div>
           </form>
@@ -280,6 +298,8 @@
     </div>
   </div>
 
+  <script src="/js/theme-engine.js"></script>
+  <script src="/js/fonts.js"></script>
   <script src="/js/app.js"></script>
   <script src="/js/admin.js"></script>
 </body>
