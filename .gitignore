@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Runtime / temporary files
+tmp/
+temp/
+.cache/
+
+# Build outputs
+dist/
+build/
+.next/
+.vercel/
+
+# Local development
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Local databases / data
+*.db
+*.sqlite
+*.sqlite3
+
+# Generated uploads / user data
+public/uploads/*
+!public/uploads/.gitkeep
